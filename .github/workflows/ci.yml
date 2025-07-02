@@ -1,0 +1,48 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    tags: '*'
+jobs:
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      # Cancel ongoing documentation build if pushing to branch again before the previous
+      # build is finished.
+      - name: Cancel ongoing documentation builds for previous commits
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
+
+      # Build docs
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      - name: Instantiate and install dependencies
+        run: |
+          julia --project=docs -e '
+              using Pkg
+              Pkg.develop(PackageSpec(path=pwd()))
+              Pkg.instantiate()'
+      - name: Generate documentation and deploy
+        env: # needed for pushing to gh-pages branch
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+        run:
+          julia --project=docs --color=yes docs/make.jl
