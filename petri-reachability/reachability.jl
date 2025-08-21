@@ -1,3 +1,5 @@
+# paper at https://doi.org/10.1016/j.ejor.2005.10.060
+
 using Catlab, AlgebraicPetri
 using JuMP, HiGHS
 
