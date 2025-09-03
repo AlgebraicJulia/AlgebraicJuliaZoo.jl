@@ -37,9 +37,11 @@ to_graphviz(pn)
 # M places N transitions
 
 """
-Generate integer programming model 1 from the paper (eq set 9)
+Generate integer programming model 1 from the paper (eq set 9). There is no objective
+set; you can `optimize!` the resulting model without objectives to correspond to Obj 1 from the paper
+(vanishing identically), or use `make_obj_2` to add Obj 2 from the paper.
 """
-function gen_model_1(pn, K, m0, mf; optimizer=HiGHS.Optimizer)
+function make_model_1(pn, K, m0, mf; optimizer=HiGHS.Optimizer)
 
     tm = TransitionMatrices(pn)
     # pre is C- and post is C+ matrices in paper
@@ -70,16 +72,20 @@ function gen_model_1(pn, K, m0, mf; optimizer=HiGHS.Optimizer)
         reduce(+, [C * X[:,i] for i in 1:K]) == mf - m0
     )
 
-    # obj 1 (vanishing identically)
-
-    # # obj 2 (L1 norm of steps)
-    # @objective(
-    #     mod,
-    #     Min,
-    #     sum(X)
-    # )
-
     return mod, X
+end
+
+"""
+Add Objective 2 (L1 norm of steps) to the model.
+"""
+function make_obj_2(mod)
+    X = mod[:X]
+
+    @objective(
+        mod,
+        Min,
+        sum(X)
+    )
 end
 
 function kmin_val(m)
@@ -97,6 +103,9 @@ mf[5] = 17
 
 Kmin = kmin_val(m0)
 
-mod, X = gen_model_1(pn, Kmin, m0, mf)
+mod, X = make_model_1(pn, Kmin, m0, mf)
 
 optimize!(mod)
+
+# values of decision variables at optimal solution
+value.(X)
