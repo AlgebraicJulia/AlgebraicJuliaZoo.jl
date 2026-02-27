@@ -1,0 +1,379 @@
+---
+title: "Calculating Subobjects of Representable Functors"
+description: | 
+  Given a representable functor, we present a short vignette that describes how to calculate subobjects of representables.
+date: 2/26/2026
+author: 
+  - name: Nelson Niu
+  - name: Nathaniel Osgood
+  - name: Priyaa Srinivasan
+  - name: Jacob Zelko
+  - name: Juxin Liu
+citation: true
+bibliography: refs.bib 
+engine: julia
+toc: true
+---
+
+## Background
+
+
+
+## Catlab Set-Up
+
+```{julia}
+using CairoMakie
+using Images
+using MosaicViews
+
+import Catlab.CategoricalAlgebra:
+  @acset,
+  @acset_type,
+  @acset_colim,
+  @present,
+  ACSetCategory,
+  FreeSchema,
+  elements,
+  incident,
+  nparts,
+  representable,
+  set_subpart!,
+  src,
+  subobject_classifier,
+  tgt,
+  yoneda
+import Catlab.Graphs:
+  NamedGraph,
+  add_vertices!,
+  add_edges!
+import Catlab.Graphics:
+  to_graphviz
+import Catlab.Graphics.Graphviz: 
+  run_graphviz
+import Catlab.Models:
+  @withmodel
+import Catlab.Subobjects:
+  Subobject,
+  ⟹
+```
+
+## Defining Representables
+
+```{julia}
+ng = NamedGraph{Symbol, Symbol}
+```
+
+```{julia}
+vset_rep = representable(ng, :V)
+```
+
+```{julia}
+to_graphviz(vset_rep, node_labels = true, edge_labels = true, graph_attrs=Dict(:splines=>"false", :rankdir => "LR"))
+```
+
+We next consider the representable for edges
+
+```{julia}
+eset_rep = representable(ng, :E)
+```
+
+```{julia}
+to_graphviz(eset_rep, node_labels = true, edge_labels = true, graph_attrs=Dict(:splines=>"false", :rankdir => "LR"))
+```
+
+## Exploring Subobject Classifiers
+
+### Subobject Classifier for Graphs
+
+To allow computation of the subobject classifier for a schema for graphs, we need to use a schema without attributes.
+We declare one here.
+
+```{julia}
+@present SchMyGrph(FreeSchema) begin
+  V::Ob
+  E::Ob
+  src::Hom(E,V)
+  tgt::Hom(E,V)
+end;
+```
+
+```{julia}
+@acset_type MyGrph(SchMyGrph, index=[:src, :tgt])
+```
+
+```{julia}
+representable(MyGrph, :V)
+```
+
+```{julia}
+representable(MyGrph, :E)
+```
+
+```{julia}
+ΩGraph, dictΩGraph = subobject_classifier(MyGrph)
+```
+
+```{julia}
+to_graphviz(elements(ΩGraph))
+```
+
+### Subobject Classifier for Symmetric Graphs
+
+Now we examine the representable for a symmetric graph
+
+```{julia}
+@present SchSymmetricGrph(FreeSchema) begin
+  V::Ob
+  E::Ob
+  src::Hom(E,V)
+  tgt::Hom(E,V)
+  inv::Hom(E,E)
+
+  compose(inv,inv) == id(E)
+  compose(inv,src) == tgt
+  compose(inv,tgt) == src
+end;
+```
+
+```{julia}
+@acset_type SchSymmetricInstance(SchSymmetricGrph)
+```
+
+```{julia}
+representable(SchSymmetricInstance, :V)
+```
+
+```{julia}
+representable(SchSymmetricInstance, :E)
+```
+
+```{julia}
+ΩSymGraph, dictΩSymGraph = subobject_classifier(SchSymmetricInstance)
+```
+
+```{julia}
+to_graphviz(elements(ΩSymGraph))
+```
+
+## Subobject Classifiers for the Zig-Zag Schema
+
+### Subobject Classifier for $2$ Timepoints
+
+Zig-zag schema for 2 timepoints
+
+```{julia}
+@present ZigZag2Timepoints(FreeSchema) begin
+  (t0,t1)::Ob
+  (t0_to_t1)::Ob
+  t0_incl::Hom(t0,t0_to_t1)
+  t1_incl::Hom(t1,t0_to_t1)
+end;
+```
+
+```{julia}
+@acset_type ZigZag2TimepointsInstance(ZigZag2Timepoints)
+```
+
+```{julia}
+yoneda(ZigZag2TimepointsInstance)
+```
+
+```{julia}
+hT0_2TP = representable(ZigZag2TimepointsInstance, :t0)
+```
+
+```{julia}
+to_graphviz(elements(hT0_2TP))
+```
+
+```{julia}
+hT1_2TP = representable(ZigZag2TimepointsInstance, :t1)
+```
+
+```{julia}
+to_graphviz(elements(hT1_2TP))
+```
+
+```{julia}
+hT0_to_T1_2TP = representable(ZigZag2TimepointsInstance, :t0_to_t1)
+```
+
+```{julia}
+to_graphviz(elements(hT0_to_T1_2TP))
+```
+
+```{julia}
+ΩZZ2TP, dictΩZZ2TP = subobject_classifier(ZigZag2TimepointsInstance)
+```
+
+```{julia}
+to_graphviz(elements(ΩZZ2TP))
+```
+
+#### Work in Progress
+
+I was attempting to enumerate the subobjects found within this interval.
+There are 8 total subobjects without accounting for the constraints -- with the constraints, there are actually only 5 subobjects.
+These constraints come into play on the "edges" of the interval (i.e. $t_{0}$ and $t_{1}$).
+
+I am able to extract the 8 subobjects from within the 
+`dictΩZZ2TP` associated to each object on the interval span.
+What I would like to do is:
+
+1. Enforce the constraints so as to only recover 5 subobjects.
+
+2. Interpret the subobjects as graphs with 2 vertices and 1 directed edge.
+
+3. Extract truth values associated with each subobject's representable.
+
+4. Color vertex 1, vertex 2, or the edge to correspond to truth values on the subobject.
+
+5. Perform logic between subobjects so as to combine with [the last section](#calculating-truth-tables-for-subobjects-of-representables)
+
+Per Nelson Niu, there is a Kan extension that exists such that we can have an adjunction from Zop to Gr so that we could have object 2 and 4.
+Then, since we would be working with graphs, it should be straightforward to do 5.
+Yet, I am blocked.
+
+```
+test_key_t1 = dictΩZZ2TP.keys[16]
+test_key_t0 = dictΩZZ2TP.keys[11]
+test_key_t0t1 = dictΩZZ2TP.keys[14]
+
+t0_subobs = Subobject.(dictΩZZ2TP[test_key_t0] .|> ob, dictΩZZ2TP[test_key_t0] .|> components)
+
+t1_subobs = Subobject.(dictΩZZ2TP[test_key_t1] .|> ob, dictΩZZ2TP[test_key_t1] .|> components)
+
+t0t1_subobs = Subobject.(dictΩZZ2TP[test_key_t0t1] .|> ob, dictΩZZ2TP[test_key_t0t1] .|> components)
+
+subobs = []
+push!(subobs, t0_subobs...)
+push!(subobs, t1_subobs...)
+push!(subobs, t0t1_subobs...)
+
+subobject_pairs = [(b, c) for b in reverse(subobs), c in subobs];
+@withmodel ACSetCategory(ZigZag2TimepointsInstance()) (⟹) begin
+    for (idx, pair) in enumerate(subobject_pairs)
+        representative = pair[1] ⟹ pair[2]
+        open("graph_$(idx).png", "w") do io
+            run_graphviz(io, to_graphviz(representative, graph_attrs=Dict(:dpi => "300")), format="png")
+        end
+    end
+end
+```
+
+
+### Subobject Classifier for $4$ Timepoints
+
+Now we examine the impact of a size 4 category
+
+```{julia}
+@present ZigZag4Timepoints(FreeSchema) begin
+  (t0,t1,t2,t3)::Ob
+  (t0_to_t1, t1_to_t2, t2_to_t3)::Ob
+
+  t0_inclS::Hom(t0,t0_to_t1)
+  t1_inclF::Hom(t1,t0_to_t1)
+
+  t1_inclS::Hom(t1,t1_to_t2)
+  t2_inclF::Hom(t2,t1_to_t2)
+
+  t2_inclS::Hom(t2,t2_to_t3)
+  t3_inclF::Hom(t3,t2_to_t3)
+end;
+```
+
+```{julia}
+@acset_type ZigZag4TimepointsInstance2(ZigZag4Timepoints)
+```
+
+```{julia}
+yoneda(ZigZag4TimepointsInstance2)
+```
+
+```{julia}
+hT0_4TP = representable(ZigZag4TimepointsInstance2, :t0)
+```
+
+```{julia}
+to_graphviz(elements(hT0_4TP))
+```
+
+```{julia}
+hT1_4TP = representable(ZigZag4TimepointsInstance2, :t1)
+```
+
+```{julia}
+to_graphviz(elements(hT1_4TP))
+```
+
+```{julia}
+ΩZZ4TP,dictΩZZ4TP  = subobject_classifier(ZigZag4TimepointsInstance2)
+```
+
+```{julia}
+to_graphviz(elements(ΩZZ4TP))
+```
+
+## Calculating Truth Tables for Subobjects of Representables
+
+```{julia}
+G = NamedGraph{Symbol, Symbol}()
+
+add_vertices!(
+    G,
+    2
+)
+
+set_subpart!(G, :vname, [:L1, :L2]);
+
+add_edges!(
+    G,
+    [1],
+    [2],
+    ename = :apex
+)
+
+to_graphviz(G, node_labels = true, edge_labels = true, graph_attrs=Dict(:splines=>"false", :rankdir => "LR"))
+```
+
+```{julia}
+S1 = Subobject(G, V = [])
+S2 = Subobject(G, V = incident(G, :L1, :vname))
+S3 = Subobject(G, V = incident(G, :L2, :vname))
+S4 = Subobject(G, V = vcat(incident(G, :L1, :vname), incident(G, :L2, :vname)))
+S5 = Subobject(G, V = vcat(incident(G, :L1, :vname), incident(G, :L2, :vname)), E = incident(G, :apex, :ename))
+
+subobjects = [S1, S2, S3, S4, S5];
+```
+
+```{julia}
+subobjects .|> x -> to_graphviz(x, graph_attrs=Dict(:splines=>"false", :rankdir => "LR")) |> display;
+```
+
+```{julia}
+subobject_pairs = [(b, c) for b in reverse(subobjects), c in subobjects];
+```
+
+```{julia}
+@withmodel ACSetCategory(NamedGraph{Symbol, Symbol}()) (⟹) begin
+    for (idx, pair) in enumerate(subobject_pairs)
+        representative = pair[1] ⟹ pair[2]
+        open("graph_$(idx).png", "w") do io
+            run_graphviz(io, to_graphviz(representative, graph_attrs=Dict(:dpi => "300")), format="png")
+        end
+    end
+end
+```
+
+```{julia}
+imgs = [CairoMakie.load("graph_$i.png") for i in 1:25];
+```
+
+```{julia}
+m = mosaicview(imgs, nrow=5, ncol=5, npad=4, fillvalue=colorant"white")
+
+fig, ax, plt = CairoMakie.image(rotr90(m))
+hidedecorations!(ax)
+hidespines!(ax)
+display(fig)
+```
