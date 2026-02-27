@@ -1,0 +1,74 @@
+---
+title: "Exploring Spatial Grids"
+description: | 
+  Examining degenerate spatial grids .
+date: 2/27/2026
+author: 
+  - name: Nelson Niu
+  - name: Nathaniel Osgood
+  - name: Priyaa Srinivasan
+  - name: Jacob Zelko
+  - name: Juxin Liu
+citation: true
+bibliography: refs.bib 
+engine: julia
+toc: true
+---
+
+## Background
+
+## Catlab Set-Up
+
+```{julia}
+import Catlab.CategoricalAlgebra:
+  @acset,
+  @acset_type,
+  @acset_colim,
+  @present,
+  FreeSchema,
+  elements,
+  nparts,
+  representable,
+  set_subpart!,
+  src,
+  subobject_classifier,
+  tgt,
+  yoneda
+```
+
+We now examine a degenerate spatial grid, with one node in the middle
+
+```{julia}
+@present gridCenterCardinalDirections(FreeSchema) begin
+  (N,S,E,W)::Ob  # top cell
+
+  cell::Ob
+
+  N2Cell::Hom(N,cell)
+  S2Cell::Hom(S,cell)
+  E2Cell::Hom(E,cell)
+  W2Cell::Hom(W,cell)
+end;
+```
+
+```{julia}
+@acset_type gridCenterCardinalDirectionsInstance(gridCenterCardinalDirections)
+```
+
+```{julia}
+ΩgridCenterGardinalDirections,dictΩZZ4TP  = subobject_classifier(gridCenterCardinalDirectionsInstance)
+```
+
+```{julia}
+@present grid3x3(FreeSchema) begin
+  (c00,c01,c02)::Ob  # top row of cells
+  (c10,c11,c12)::Ob  # left in middle row, middle cell, right cell in middle row
+  (c20,c21,c22)::Ob  # bottom row of cells
+
+  # wire up to central cell
+  c01_to_c11::Hom(c01,c11)
+  c10_to_c11::Hom(c10,c11)
+  c12_to_c11::Hom(c12,c11)
+  c21_to_c11::Hom(c21,c11)
+end;
+```
