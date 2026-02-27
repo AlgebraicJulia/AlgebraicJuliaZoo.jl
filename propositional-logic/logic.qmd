@@ -1,0 +1,257 @@
+---
+title: "Further Exploration of Propositional Logic with Subgraphs and Subobjects"
+description: | 
+  Additional exploration of propositional logic on subgraphs and subobjects.
+date: 2/25/2026
+author: 
+  - name: Nelson Niu
+  - name: Nathaniel Osgood
+  - name: Priyaa Srinivasan
+  - name: Jacob Zelko
+  - name: Juxin Liu
+citation: true
+bibliography: refs.bib 
+engine: julia
+toc: true
+execute: 
+  enabled: true
+---
+
+## Background
+
+This exploration builds upon _Graphs and C-sets IV: The propositional logic of subgraphs and sub-C-sets_ [@myers2021graphs] by both reviewing propositional logic on subgraphs and then extending this exploration to subobjects of representables.
+
+## Catlab Set-Up
+
+```{julia}
+import Catlab.CategoricalAlgebra:
+  ACSetCategory,
+  Subobject,
+  set_subpart!
+import Catlab.Graphs:
+  NamedGraph,
+  add_vertices!,
+  add_edges!
+import Catlab.Graphics:
+  to_graphviz
+import Catlab.Graphics.Graphviz: 
+  run_graphviz
+import Catlab.Theories:
+  @withmodel
+import Catlab.Subobjects:
+  ∧, 
+  ∨, 
+  ⊤, 
+  ⊥,
+  ⟹, 
+  \, 
+  ¬, 
+  ~
+```
+
+## Propositional Logic of Subgraphs
+
+### Defining Our ACSet
+
+To start with this work, we adopt the example graph used by [@myers2021graphs].
+This graph has $3$ connected components being:
+
+- A component with $6$ vertices which includes a skein
+
+- A component with $3$ vertices representing a span
+
+- A component with $1$ vertex
+
+We proceed to instantiate this acset as follows:
+
+Initialize an empty named graph:
+
+```{julia}
+graph_1 = NamedGraph{Symbol, Symbol}()
+```
+
+Add $10$ vertices to the graph:
+
+```{julia}
+add_vertices!(graph_1, 10)
+```
+
+Create component $1$
+
+```{julia}
+add_edges!(graph_1,
+  [1, 2, 2, 4, 4, 6], # Source vector
+  [2, 3, 3, 2, 5, 5]  # Target vector
+)
+```
+
+Create component $2$
+
+```{julia}
+add_edges!(graph_1,
+  [7, 7], # Source vector
+  [8, 9]  # Target vector
+)
+```
+
+Assign names $V1$ - $V10$ to each vertex:
+
+```{julia}
+set_subpart!(graph_1, :vname, Symbol.("V$v" for v in 1:10));
+```
+
+Assign names $E1$ - $E8$ to each edge:
+
+```{julia}
+set_subpart!(graph_1, :ename, Symbol.("E$e" for e in 1:8));
+```
+
+And now we can preview this graph:
+
+```{julia}
+to_graphviz(graph_1, node_labels=true, edge_labels=true)
+```
+
+> Note: Observe how there is a component that was defined as only a single vertex without an edge.
+> This vertex was created with the `add_vertices!` command.
+
+### Defining Subgraphs of an ACSet
+
+<!-- TODO: Revise Nelson's graph to have additional subjects for meets, joins, and otherwise. -->
+<!-- TODO: Get rid of graph_2 -->
+
+```{julia}
+graph_2 = NamedGraph{Symbol, Symbol}()
+
+add_vertices!(
+    graph_2,
+    8,
+    vname = Symbol.("V$v" for v in 1:8)
+)
+
+add_edges!(
+    graph_2,
+    [1, 2, 3, 1, 5, 7, 3],
+    [2, 3, 4, 4, 6, 7, 8],
+    ename = Symbol.("E$e" for e in 1:7)
+)
+
+to_graphviz(graph_2, node_labels=true, edge_labels=true)
+```
+
+<!-- TODO: Update this note --> 
+
+Subobjects are monomorphisms into a chosen ambient graph. Here we create subobjects `A`, `B`, and `C` by specifying the subsets of vertices and edges from `graph_1` and `graph_2` respectively that define each inclusion.
+
+```{julia}
+A = Subobject(graph_1, V = [4, 2, 3, 7, 8, 10], E = [4, 2, 7]);
+to_graphviz(A, node_labels=true, edge_labels=true)
+```
+
+
+```{julia}
+B = Subobject(graph_2, V=1:4, E=[1,2,4])
+to_graphviz(B, node_labels=true, edge_labels=true)
+```
+
+```{julia}
+C = Subobject(graph_2, V=[2,3,4,7,8], E=[2,3,6,7])
+to_graphviz(C, node_labels=true, edge_labels=true)
+```
+
+### Exploring Propositional Logic
+
+To start with, we will define a categorical model. This is built using a NamedGraph that is subsumed into a category.
+
+> Note: In Catlab.jl, an `ACSetCategory` packages an acset schema together with its morphisms into a proper category object. Here, `CatRefModel` serves as the ambient categorical model in which subobject operations — such as meets, joins, negation, and implication — are interpreted via the internal Heyting algebra structure on the subobject lattice.
+
+```{julia}
+CatRefModel = ACSetCategory(NamedGraph{Symbol, Symbol}());
+```
+
+<!--
+TODO: Review this write-up here 
+TODO: Revise the snippet descriptions
+   -->
+
+> Note: In Catlab.jl, an `ACSetCategory` packages an acset schema together with its morphisms into a proper category object. Here, `CatRefModel` serves as the ambient categorical model in which subobject operations — such as meets, joins, negation, and implication — are interpreted via the internal Heyting algebra structure on the subobject lattice.
+
+Compute the Heyting negation $\neg A$: the largest subobject of `graph_1` whose meet with $A$ is the bottom (empty) subobject.
+
+```{julia}
+@withmodel CatRefModel (¬) begin
+    ¬A
+end |> to_graphviz
+```
+
+Compute the Boolean complement ${\sim}A$: the set-theoretic complement of $A$ in `graph_1` (vertices and edges not in $A$).
+
+```{julia}
+@withmodel CatRefModel (~) begin
+    ~A
+end |> to_graphviz
+```
+
+Compute the meet $A \wedge {\sim}A$: the intersection of $A$ with its Boolean complement, which should yield the bottom subobject.
+
+```{julia}
+@withmodel CatRefModel (∧, ~) begin
+    (A ∧ ~A)
+end |> to_graphviz
+```
+
+Compute the double Heyting negation $\neg\neg A$: in general this is larger than $A$, illustrating that subobject lattices need not be Boolean.
+
+```{julia}
+@withmodel CatRefModel (¬) begin
+    ¬¬A
+end |> to_graphviz
+```
+
+Compute ${\sim}\neg A$: the Boolean complement of the Heyting negation of $A$.
+
+```{julia}
+@withmodel CatRefModel (¬, ~) begin
+    ~¬A
+end |> to_graphviz
+```
+
+Compute $\neg{\sim} A$: the Heyting negation of the Boolean complement of $A$.
+
+```{julia}
+@withmodel CatRefModel (¬, ~) begin
+    ¬~A
+end |> to_graphviz
+```
+
+Compute the join $B \vee C$: the smallest subobject of `graph_2` containing both $B$ and $C$ (their union).
+
+```{julia}
+@withmodel CatRefModel (∨) begin
+  B ∨ C
+end |> to_graphviz
+```
+
+Compute the meet $B \wedge C$: the largest subobject of `graph_2` contained in both $B$ and $C$ (their intersection).
+
+```{julia}
+@withmodel CatRefModel (∧) begin
+  B ∧ C
+end |> to_graphviz
+```
+
+Compute the Heyting implication $B \Rightarrow C$: the largest subobject of `graph_2` whose meet with $B$ is contained in $C$.
+
+```{julia}
+@withmodel CatRefModel (⟹) begin
+  B ⟹ C
+end |> to_graphviz
+```
+
+Compute the relative complement $B \setminus C$: the part of $B$ that does not overlap with $C$.
+
+```{julia}
+@withmodel CatRefModel (\) begin
+  B \ C
+end |> to_graphviz
+```
