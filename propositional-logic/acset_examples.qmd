@@ -1,0 +1,119 @@
+---
+title: "Examples of How To Define ACSets"
+description: | 
+  
+date: 2/26/2026
+author: 
+  - name: Nelson Niu
+  - name: Nathaniel Osgood
+  - name: Priyaa Srinivasan
+  - name: Jacob Zelko
+  - name: Juxin Liu
+citation: true
+bibliography: refs.bib 
+engine: julia
+toc: true
+---
+
+## Background
+
+## Catlab Set-Up
+
+```{julia}
+import Catlab.CategoricalAlgebra:
+  @acset,
+  @acset_type,
+  @acset_colim,
+  @present,
+  FreeSchema,
+  elements,
+  nparts,
+  representable,
+  set_subpart!,
+  src,
+  subobject_classifier,
+  tgt,
+  yoneda
+import Catlab.Graphs:
+  NamedGraph
+import Catlab.Graphics:
+  to_graphviz
+import Catlab.Graphics.Graphviz: 
+  run_graphviz
+```
+
+
+
+```{julia}
+ng = NamedGraph{Symbol, Symbol}
+```
+
+```{julia}
+y_ng = yoneda(ng)
+```
+
+```{julia}
+ng1 = @acset_colim y_ng begin
+  # First Component
+  (v1,v2,v3,v4,v5,v6)::V
+  (e1,e2,e3,e4,e5,e6)::E
+
+  # To reduce brutal repetition, like "ename(e6) == $(:E6);" for each edge, we will perform this naming below in a single comprehension.
+  src(e1) == v1; tgt(e1)==v2;
+  src(e2) == v2; tgt(e2)==v3;
+  src(e3) == v2; tgt(e3)==v3;
+  src(e4) == v4; tgt(e4)==v2;
+  src(e5) == v4; tgt(e5)==v5;
+  src(e6) == v6; tgt(e6)==v5;
+
+
+  # Second component
+  (v7,v8,v9)::V
+  (e7,e8)::E
+
+  src(e7) == v7; tgt(e7) == v8;
+  src(e8) == v7; tgt(e8) == v9;
+
+
+  # Third component
+  (v10)::V
+end
+```
+
+```{julia}
+set_subpart!(ng1, :ename, Symbol.("E$e" for e in 1:nparts(ng1, :E)));
+```
+
+```{julia}
+set_subpart!(ng1, :vname, Symbol.("V$v" for v in 1:nparts(ng1, :V)));
+```
+
+```{julia}
+to_graphviz(ng1, node_labels=true, edge_labels=true)
+```
+
+```{julia}
+# We now declaratively characterize this in traditional syntax
+```
+
+```{julia}
+graph_1Manual = @acset ng begin
+  V = 10
+  E = 8
+
+  src = [1, 2, 2, 4, 4, 6, 7, 7] # Source vector
+  tgt = [2, 3, 3, 2, 5, 5, 8, 9]  # Target vector
+end
+```
+
+```{julia}
+
+```
+
+```{julia}
+set_subpart!(graph_1Manual, :vname, Symbol.("V$v" for v in 1:10));
+```
+
+```{julia}
+set_subpart!(graph_1Manual, :ename, Symbol.("E$e" for e in 1:8));
+```
